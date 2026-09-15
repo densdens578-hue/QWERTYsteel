@@ -1,13 +1,15 @@
 -- ============================================================
--- QWERTYsteel v8.0
+-- QWERTYsteel v12.0
 -- Автор: ROCKET для Миши
 -- Игра: Steal an Egg
 -- Экзекьютор: Delta
 -- Ключ: CELEBRATE6667
+-- Каркас GUI: CustomGUI.lua (Claude)
 -- ============================================================
 
-local player = game.Players.LocalPlayer
+local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
+local player = Players.LocalPlayer
 
 -- ============================================================
 -- 1. ПРОВЕРКА КЛЮЧА
@@ -34,9 +36,7 @@ keyFrame.Active = true
 keyFrame.Draggable = true
 keyFrame.Parent = keyGui
 
-local keyCorner = Instance.new("UICorner")
-keyCorner.CornerRadius = UDim.new(0, 8)
-keyCorner.Parent = keyFrame
+Instance.new("UICorner", keyFrame).CornerRadius = UDim.new(0, 8)
 
 local keyTitle = Instance.new("TextLabel")
 keyTitle.Size = UDim2.new(1, 0, 0, 36)
@@ -91,245 +91,345 @@ errorLabel.Font = Enum.Font.Gotham
 errorLabel.Parent = keyFrame
 
 -- ============================================================
--- 2. ГЛАВНЫЙ GUI (СРАЗУ ОТКРЫТ, БЕЗ ИКОНКИ)
+-- 2. ЛОГИКА ФУНКЦИЙ
+-- ============================================================
+local activeLoops = {}
+
+local function findNearestTarget(maxDist)
+    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return nil end
+    local nearest, dist = nil, maxDist or 500
+    for _, obj in pairs(workspace:GetChildren()) do
+        if obj:FindFirstChild("Humanoid") and obj:FindFirstChild("HumanoidRootPart") and obj ~= player.Character then
+            local d = (obj.HumanoidRootPart.Position - hrp.Position).Magnitude
+            if d < dist then
+                nearest, dist = obj, d
+            end
+        end
+    end
+    return nearest
+end
+
+local function startAutoSteal()
+    activeLoops.AutoSteal = true
+    task.spawn(function()
+        while activeLoops.AutoSteal do
+            local target = findNearestTarget(300)
+            if target then
+                local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    hrp.CFrame = target.HumanoidRootPart.CFrame + Vector3.new(0, 0, 3)
+                end
+            end
+            task.wait(0.3)
+        end
+    end)
+end
+
+local function stopAutoSteal()
+    activeLoops.AutoSteal = false
+end
+
+local function setSpeed(value)
+    if player.Character and player.Character:FindFirstChild("Humanoid") then
+        player.Character.Humanoid.WalkSpeed = value
+    end
+end
+
+local function startFly()
+    activeLoops.Fly = true
+    task.spawn(function()
+        while activeLoops.Fly do
+            local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                local move = Vector3.new(0, 0, 0)
+                if UIS:IsKeyDown(Enum.KeyCode.W) then move = move + Vector3.new(0, 0, -50) end
+                if UIS:IsKeyDown(Enum.KeyCode.S) then move = move + Vector3.new(0, 0, 50) end
+                if UIS:IsKeyDown(Enum.KeyCode.A) then move = move + Vector3.new(-50, 0, 0) end
+                if UIS:IsKeyDown(Enum.KeyCode.D) then move = move + Vector3.new(50, 0, 0) end
+                if UIS:IsKeyDown(Enum.KeyCode.Space) then move = move + Vector3.new(0, 50, 0) end
+                hrp.Velocity = move
+            end
+            task.wait(0.05)
+        end
+    end)
+end
+
+local function stopFly()
+    activeLoops.Fly = false
+    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if hrp then hrp.Velocity = Vector3.new(0, 0, 0) end
+end
+
+-- ============================================================
+-- 3. ГЛАВНЫЙ GUI (CustomGUI.lua + функции)
 -- ============================================================
 local function startMain()
     keyGui:Destroy()
 
-    local oldGui = player.PlayerGui:FindFirstChild("QWERTYsteel")
-    if oldGui then oldGui:Destroy() end
+    local old = player.PlayerGui:FindFirstChild("QWERTYsteel")
+    if old then old:Destroy() end
 
-    local gui = Instance.new("ScreenGui")
-    gui.Name = "QWERTYsteel"
-    gui.Parent = player.PlayerGui
-    gui.ResetOnSpawn = false
-    gui.IgnoreGuiInset = true
-    gui.DisplayOrder = 999
-
-    -- ============================================================
-    -- 2.1 ГЛАВНОЕ ОКНО (СРАЗУ ВИДИМОЕ)
-    -- ============================================================
-    local menuFrame = Instance.new("Frame")
-    menuFrame.Name = "MenuFrame"
-    menuFrame.Size = UDim2.new(0, 440, 0, 520)
-    menuFrame.Position = UDim2.new(0.5, -220, 0.5, -260)
-    menuFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
-    menuFrame.BorderSizePixel = 1
-    menuFrame.BorderColor3 = Color3.fromRGB(40, 50, 80)
-    menuFrame.Active = true
-    menuFrame.Draggable = true
-    menuFrame.Visible = true -- СРАЗУ ОТКРЫТО
-    menuFrame.Parent = gui
-
-    local menuCorner = Instance.new("UICorner")
-    menuCorner.CornerRadius = UDim.new(0, 10)
-    menuCorner.Parent = menuFrame
-
-    local menuTitle = Instance.new("TextLabel")
-    menuTitle.Size = UDim2.new(1, 0, 0, 40)
-    menuTitle.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
-    menuTitle.Text = "QWERTYsteel v8"
-    menuTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
-    menuTitle.TextSize = 20
-    menuTitle.Font = Enum.Font.GothamBold
-    menuTitle.TextXAlignment = Enum.TextXAlignment.Left
-    menuTitle.PaddingLeft = 15
-    menuTitle.Parent = menuFrame
-
-    -- Кнопка СВЁРТЫВАНИЯ (вместо закрытия)
-    local minimizeBtn = Instance.new("TextButton")
-    minimizeBtn.Size = UDim2.new(0, 40, 0, 40)
-    minimizeBtn.Position = UDim2.new(1, -45, 0, 0)
-    minimizeBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
-    minimizeBtn.Text = "—"
-    minimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    minimizeBtn.TextSize = 24
-    minimizeBtn.Font = Enum.Font.GothamBold
-    minimizeBtn.Active = true
-    minimizeBtn.Selectable = true
-    minimizeBtn.Parent = menuFrame
-
-    -- Кнопка РАЗВЁРТЫВАНИЯ (появляется, когда меню свёрнуто)
-    local restoreBtn = Instance.new("TextButton")
-    restoreBtn.Size = UDim2.new(0, 60, 0, 60)
-    restoreBtn.Position = UDim2.new(0.05, 0, 0.12, 0)
-    restoreBtn.BackgroundColor3 = Color3.fromRGB(25, 35, 60)
-    restoreBtn.Text = "Q"
-    restoreBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    restoreBtn.TextSize = 26
-    restoreBtn.Font = Enum.Font.GothamBold
-    restoreBtn.BorderSizePixel = 0
-    restoreBtn.Active = true
-    restoreBtn.Selectable = true
-    restoreBtn.Visible = false -- СКРЫТА ПОКА МЕНЮ ОТКРЫТО
-    restoreBtn.Parent = gui
-
-    local restoreCorner = Instance.new("UICorner")
-    restoreCorner.CornerRadius = UDim.new(1, 0)
-    restoreCorner.Parent = restoreBtn
-
-    local restoreStroke = Instance.new("UIStroke")
-    restoreStroke.Color = Color3.fromRGB(80, 120, 255)
-    restoreStroke.Thickness = 2
-    restoreStroke.Parent = restoreBtn
-
-    -- СВЁРТЫВАНИЕ
-    minimizeBtn.Activated:Connect(function()
-        menuFrame.Visible = false
-        restoreBtn.Visible = true
-    end)
-
-    -- РАЗВЁРТЫВАНИЕ
-    restoreBtn.Activated:Connect(function()
-        menuFrame.Visible = true
-        restoreBtn.Visible = false
-    end)
-
-    -- ============================================================
-    -- 2.3 ВКЛАДКИ
-    -- ============================================================
-    local tabContainer = Instance.new("Frame")
-    tabContainer.Size = UDim2.new(1, 0, 0, 40)
-    tabContainer.Position = UDim2.new(0, 0, 0, 40)
-    tabContainer.BackgroundColor3 = Color3.fromRGB(12, 12, 20)
-    tabContainer.Parent = menuFrame
-
-    local tabs = {"MAIN", "VISUAL", "STYLE", "SETTINGS"}
-    local tabButtons = {}
-
-    local contentContainer = Instance.new("Frame")
-    contentContainer.Size = UDim2.new(1, 0, 1, -80)
-    contentContainer.Position = UDim2.new(0, 0, 0, 80)
-    contentContainer.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
-    contentContainer.Parent = menuFrame
+    local TABS = {"MAIN", "VISUAL", "STYLE", "SETTINGS"}
 
     local state = {
         AutoSteal = false, SmartSteal = false, FreezeSteal = false,
-        SpeedHack = false, AntiTP = false, AntiKill = false,
-        ESPEggs = false, ESPPlayers = false, Fly = false,
+        AntiTP = false, AntiKill = false, SmartStealth = false,
+        ESPEggs = false, ESPPlayers = false, ESPTraps = false, Fly = false,
         AutoPlace = false, AutoHatch = false, AutoEquip = false,
-        Treadmill = false, WaitSecret = false, SpeedValue = 400
+        Treadmill = false, WaitSecret = false,
+        SpeedValue = 400
     }
 
-    local function createToggle(parent, name, yPos)
-        local frame = Instance.new("Frame")
-        frame.Size = UDim2.new(0.9, 0, 0, 40)
-        frame.Position = UDim2.new(0.05, 0, 0, yPos)
-        frame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
-        frame.Parent = parent
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "QWERTYsteel"
+    screenGui.ResetOnSpawn = false
+    screenGui.IgnoreGuiInset = true
+    screenGui.DisplayOrder = 999
+    screenGui.Parent = player.PlayerGui
 
-        local fCorner = Instance.new("UICorner")
-        fCorner.CornerRadius = UDim.new(0, 6)
-        fCorner.Parent = frame
+    -- Главное окно
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Size = UDim2.new(0, 420, 0, 520)
+    mainFrame.Position = UDim2.new(0.5, -210, 0.5, -260)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(24, 24, 32)
+    mainFrame.Active = true
+    mainFrame.Draggable = true
+    mainFrame.Parent = screenGui
+    Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 10)
+
+    -- Заголовок
+    local titleBar = Instance.new("Frame")
+    titleBar.Size = UDim2.new(1, 0, 0, 40)
+    titleBar.BackgroundColor3 = Color3.fromRGB(18, 18, 24)
+    titleBar.Parent = mainFrame
+    Instance.new("UICorner", titleBar).CornerRadius = UDim.new(0, 10)
+
+    local titleMask = Instance.new("Frame")
+    titleMask.Size = UDim2.new(1, 0, 0, 10)
+    titleMask.Position = UDim2.new(0, 0, 1, -10)
+    titleMask.BackgroundColor3 = titleBar.BackgroundColor3
+    titleMask.BorderSizePixel = 0
+    titleMask.ZIndex = titleBar.ZIndex
+    titleMask.Parent = titleBar
+
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Size = UDim2.new(1, -90, 1, 0)
+    titleLabel.Position = UDim2.new(0, 15, 0, 0)
+    titleLabel.BackgroundTransparency = 1
+    titleLabel.Text = "QWERTYsteel"
+    titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    titleLabel.TextSize = 18
+    titleLabel.Font = Enum.Font.GothamBold
+    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    titleLabel.Parent = titleBar
+
+    -- Кнопка свёртывания
+    local minimizeBtn = Instance.new("TextButton")
+    minimizeBtn.Size = UDim2.new(0, 32, 0, 32)
+    minimizeBtn.Position = UDim2.new(1, -40, 0.5, -16)
+    minimizeBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 52)
+    minimizeBtn.Text = "—"
+    minimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    minimizeBtn.TextSize = 20
+    minimizeBtn.Font = Enum.Font.GothamBold
+    minimizeBtn.Active = true
+    minimizeBtn.Selectable = true
+    minimizeBtn.Parent = titleBar
+    Instance.new("UICorner", minimizeBtn).CornerRadius = UDim.new(0, 6)
+
+    -- Мини-полоска
+    local miniFrame = Instance.new("Frame")
+    miniFrame.Size = UDim2.new(0, 180, 0, 44)
+    miniFrame.Position = UDim2.new(0.5, -90, 0.5, -22)
+    miniFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 24)
+    miniFrame.Active = true
+    miniFrame.Draggable = true
+    miniFrame.Visible = false
+    miniFrame.Parent = screenGui
+    Instance.new("UICorner", miniFrame).CornerRadius = UDim.new(0, 10)
+
+    local miniLabel = Instance.new("TextLabel")
+    miniLabel.Size = UDim2.new(1, -50, 1, 0)
+    miniLabel.Position = UDim2.new(0, 12, 0, 0)
+    miniLabel.BackgroundTransparency = 1
+    miniLabel.Text = "QWERTYsteel"
+    miniLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    miniLabel.TextSize = 14
+    miniLabel.Font = Enum.Font.GothamBold
+    miniLabel.TextXAlignment = Enum.TextXAlignment.Left
+    miniLabel.Parent = miniFrame
+
+    local expandBtn = Instance.new("TextButton")
+    expandBtn.Size = UDim2.new(0, 30, 0, 30)
+    expandBtn.Position = UDim2.new(1, -37, 0.5, -15)
+    expandBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 52)
+    expandBtn.Text = "+"
+    expandBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    expandBtn.TextSize = 18
+    expandBtn.Font = Enum.Font.GothamBold
+    expandBtn.Active = true
+    expandBtn.Selectable = true
+    expandBtn.Parent = miniFrame
+    Instance.new("UICorner", expandBtn).CornerRadius = UDim.new(1, 0)
+
+    minimizeBtn.MouseButton1Click:Connect(function()
+        mainFrame.Visible = false
+        miniFrame.Visible = true
+    end)
+
+    expandBtn.MouseButton1Click:Connect(function()
+        mainFrame.Visible = true
+        miniFrame.Visible = false
+    end)
+
+    -- Вкладки
+    local tabBar = Instance.new("Frame")
+    tabBar.Size = UDim2.new(1, -20, 0, 34)
+    tabBar.Position = UDim2.new(0, 10, 0, 50)
+    tabBar.BackgroundTransparency = 1
+    tabBar.Parent = mainFrame
+
+    local tabLayout = Instance.new("UIListLayout")
+    tabLayout.FillDirection = Enum.FillDirection.Horizontal
+    tabLayout.Padding = UDim.new(0, 6)
+    tabLayout.Parent = tabBar
+
+    local content = Instance.new("Frame")
+    content.Size = UDim2.new(1, -20, 1, -100)
+    content.Position = UDim2.new(0, 10, 0, 92)
+    content.BackgroundColor3 = Color3.fromRGB(20, 20, 27)
+    content.Parent = mainFrame
+    Instance.new("UICorner", content).CornerRadius = UDim.new(0, 8)
+
+    local contentLayout = Instance.new("UIListLayout")
+    contentLayout.Padding = UDim.new(0, 10)
+    contentLayout.Parent = content
+
+    local contentPadding = Instance.new("UIPadding")
+    contentPadding.PaddingTop = UDim.new(0, 10)
+    contentPadding.PaddingLeft = UDim.new(0, 10)
+    contentPadding.PaddingRight = UDim.new(0, 10)
+    contentPadding.Parent = content
+
+    -- Тумблер
+    local function createToggle(parent, name, callback)
+        local row = Instance.new("Frame")
+        row.Size = UDim2.new(1, 0, 0, 40)
+        row.BackgroundColor3 = Color3.fromRGB(28, 28, 37)
+        row.Parent = parent
+        Instance.new("UICorner", row).CornerRadius = UDim.new(0, 6)
 
         local label = Instance.new("TextLabel")
-        label.Size = UDim2.new(0.6, 0, 1, 0)
-        label.Position = UDim2.new(0, 10, 0, 0)
+        label.Size = UDim2.new(1, -90, 1, 0)
+        label.Position = UDim2.new(0, 12, 0, 0)
         label.BackgroundTransparency = 1
         label.Text = name
-        label.TextColor3 = Color3.fromRGB(200, 200, 210)
+        label.TextColor3 = Color3.fromRGB(210, 210, 220)
         label.TextSize = 14
         label.Font = Enum.Font.Gotham
         label.TextXAlignment = Enum.TextXAlignment.Left
-        label.Parent = frame
+        label.Parent = row
 
         local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(0, 70, 0, 30)
-        btn.Position = UDim2.new(1, -80, 0.5, -15)
-        btn.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
-        btn.Text = "OFF"
+        btn.Size = UDim2.new(0, 64, 0, 28)
+        btn.Position = UDim2.new(1, -74, 0.5, -14)
+        btn.BackgroundColor3 = state[name] and Color3.fromRGB(0, 150, 90) or Color3.fromRGB(50, 50, 62)
+        btn.Text = state[name] and "ON" or "OFF"
         btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        btn.TextSize = 14
+        btn.TextSize = 13
         btn.Font = Enum.Font.GothamBold
         btn.Active = true
         btn.Selectable = true
-        btn.Parent = frame
+        btn.Parent = row
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
 
-        local bCorner = Instance.new("UICorner")
-        bCorner.CornerRadius = UDim.new(0, 6)
-        bCorner.Parent = btn
-
-        btn.Activated:Connect(function()
+        btn.MouseButton1Click:Connect(function()
             state[name] = not state[name]
             btn.Text = state[name] and "ON" or "OFF"
-            btn.BackgroundColor3 = state[name] and Color3.fromRGB(0, 150, 80) or Color3.fromRGB(40, 40, 55)
+            btn.BackgroundColor3 = state[name] and Color3.fromRGB(0, 150, 90) or Color3.fromRGB(50, 50, 62)
+            if callback then callback(state[name]) end
         end)
+
+        return row
     end
 
-    local function createSlider(parent, name, yPos, min, max, default)
-        local frame = Instance.new("Frame")
-        frame.Size = UDim2.new(0.9, 0, 0, 60)
-        frame.Position = UDim2.new(0.05, 0, 0, yPos)
-        frame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
-        frame.Parent = parent
-
-        local fCorner = Instance.new("UICorner")
-        fCorner.CornerRadius = UDim.new(0, 6)
-        fCorner.Parent = frame
+    -- Ползунок
+    local function createSlider(parent, name, min, max, callback)
+        local row = Instance.new("Frame")
+        row.Size = UDim2.new(1, 0, 0, 60)
+        row.BackgroundColor3 = Color3.fromRGB(28, 28, 37)
+        row.Parent = parent
+        Instance.new("UICorner", row).CornerRadius = UDim.new(0, 6)
 
         local label = Instance.new("TextLabel")
-        label.Size = UDim2.new(0.6, 0, 0, 20)
-        label.Position = UDim2.new(0, 10, 0, 5)
+        label.Size = UDim2.new(1, -20, 0, 20)
+        label.Position = UDim2.new(0, 10, 0, 4)
         label.BackgroundTransparency = 1
-        label.Text = name .. ": " .. default
-        label.TextColor3 = Color3.fromRGB(200, 200, 210)
-        label.TextSize = 14
+        label.Text = name .. ": " .. state[name]
+        label.TextColor3 = Color3.fromRGB(210, 210, 220)
+        label.TextSize = 13
         label.Font = Enum.Font.Gotham
         label.TextXAlignment = Enum.TextXAlignment.Left
-        label.Parent = frame
+        label.Parent = row
 
         local hint = Instance.new("TextLabel")
-        hint.Size = UDim2.new(0.6, 0, 0, 15)
-        hint.Position = UDim2.new(0, 10, 0, 20)
+        hint.Size = UDim2.new(1, -20, 0, 12)
+        hint.Position = UDim2.new(0, 10, 0, 24)
         hint.BackgroundTransparency = 1
         hint.Text = "Рекомендуем: 400 | Макс: 600"
-        hint.TextColor3 = Color3.fromRGB(150, 150, 170)
+        hint.TextColor3 = Color3.fromRGB(120, 120, 140)
         hint.TextSize = 10
         hint.Font = Enum.Font.Gotham
         hint.TextXAlignment = Enum.TextXAlignment.Left
-        hint.Parent = frame
+        hint.Parent = row
 
-        local slider = Instance.new("Frame")
-        slider.Size = UDim2.new(0.8, 0, 0, 10)
-        slider.Position = UDim2.new(0.1, 0, 0, 40)
-        slider.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
-        slider.Parent = frame
+        local track = Instance.new("Frame")
+        track.Size = UDim2.new(1, -20, 0, 8)
+        track.Position = UDim2.new(0, 10, 0, 42)
+        track.BackgroundColor3 = Color3.fromRGB(50, 50, 62)
+        track.Parent = row
+        Instance.new("UICorner", track).CornerRadius = UDim.new(1, 0)
 
-        local sCorner = Instance.new("UICorner")
-        sCorner.CornerRadius = UDim.new(0, 6)
-        sCorner.Parent = slider
+        local startPercent = (state[name] - min) / (max - min)
 
         local fill = Instance.new("Frame")
-        fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
-        fill.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
-        fill.Parent = slider
+        fill.Size = UDim2.new(startPercent, 0, 1, 0)
+        fill.BackgroundColor3 = Color3.fromRGB(70, 130, 255)
+        fill.Parent = track
+        Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
 
-        local fillCorner = Instance.new("UICorner")
-        fillCorner.CornerRadius = UDim.new(0, 6)
-        fillCorner.Parent = fill
-
-        local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(0, 18, 0, 18)
-        btn.Position = UDim2.new(fill.Size.X.Scale, -9, 0.5, -9)
-        btn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        btn.Text = ""
-        btn.Active = true
-        btn.Selectable = true
-        btn.Parent = slider
-
-        local bCorner = Instance.new("UICorner")
-        bCorner.CornerRadius = UDim.new(1, 0)
-        bCorner.Parent = btn
+        local knob = Instance.new("TextButton")
+        knob.Size = UDim2.new(0, 18, 0, 18)
+        knob.Position = UDim2.new(startPercent, -9, 0.5, -9)
+        knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        knob.Text = ""
+        knob.Active = true
+        knob.Selectable = true
+        knob.Parent = track
+        Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
 
         local dragging = false
 
-        btn.InputBegan:Connect(function(input)
+        local function setFromInputPos(x)
+            local trackPos = track.AbsolutePosition.X
+            local trackWidth = track.AbsoluteSize.X
+            local percent = math.clamp((x - trackPos) / trackWidth, 0, 1)
+            fill.Size = UDim2.new(percent, 0, 1, 0)
+            knob.Position = UDim2.new(percent, -9, 0.5, -9)
+            local value = math.floor(min + (max - min) * percent + 0.5)
+            state[name] = value
+            label.Text = name .. ": " .. value
+            if callback then callback(value) end
+        end
+
+        knob.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                 dragging = true
             end
         end)
 
-        btn.InputEnded:Connect(function(input)
+        knob.InputEnded:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                 dragging = false
             end
@@ -337,130 +437,149 @@ local function startMain()
 
         UIS.InputChanged:Connect(function(input)
             if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-                local mouseX = input.Position.X
-                local sliderPos = slider.AbsolutePosition.X
-                local sliderWidth = slider.AbsoluteSize.X
-                local percent = math.clamp((mouseX - sliderPos) / sliderWidth, 0, 1)
-                fill.Size = UDim2.new(percent, 0, 1, 0)
-                btn.Position = UDim2.new(percent, -9, 0.5, -9)
-                local value = math.floor(min + (max - min) * percent)
-                label.Text = name .. ": " .. value
-                state[name] = value
+                setFromInputPos(input.Position.X)
             end
         end)
+
+        track.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                setFromInputPos(input.Position.X)
+            end
+        end)
+
+        return row
     end
 
-    local function loadTabContent(tabName)
-        for _, child in pairs(contentContainer:GetChildren()) do
-            child:Destroy()
+    -- Загрузка вкладок
+    local tabButtons = {}
+
+    local function clearContent()
+        for _, child in ipairs(content:GetChildren()) do
+            if not child:IsA("UIListLayout") and not child:IsA("UIPadding") then
+                child:Destroy()
+            end
         end
+    end
+
+    local function loadTab(tabName)
+        clearContent()
 
         if tabName == "MAIN" then
-            createToggle(contentContainer, "AutoSteal", 10)
-            createToggle(contentContainer, "SmartSteal", 60)
-            createToggle(contentContainer, "FreezeSteal", 110)
-            createSlider(contentContainer, "SpeedValue", 170, 16, 600, 400)
-            createToggle(contentContainer, "AntiTP", 240)
-            createToggle(contentContainer, "AntiKill", 290)
-            createToggle(contentContainer, "Умный стелс", 340)
+            createToggle(content, "AutoSteal", function(val)
+                if val then startAutoSteal() else stopAutoSteal() end
+            end)
+            createToggle(content, "SmartSteal", function(val) end)
+            createToggle(content, "FreezeSteal", function(val) end)
+            createSlider(content, "SpeedValue", 16, 600, function(val)
+                setSpeed(val)
+            end)
+            createToggle(content, "AntiTP", function(val) end)
+            createToggle(content, "AntiKill", function(val) end)
+            createToggle(content, "Умный стелс", function(val) end)
+
         elseif tabName == "VISUAL" then
-            createToggle(contentContainer, "ESPEggs", 10)
-            createToggle(contentContainer, "ESPPlayers", 60)
-            createToggle(contentContainer, "ESP Traps", 110)
-            createToggle(contentContainer, "Fly", 160)
+            createToggle(content, "ESPEggs", function(val) end)
+            createToggle(content, "ESPPlayers", function(val) end)
+            createToggle(content, "ESP Traps", function(val) end)
+            createToggle(content, "Fly", function(val)
+                if val then startFly() else stopFly() end
+            end)
+
         elseif tabName == "STYLE" then
-            createToggle(contentContainer, "AutoPlace", 10)
-            createToggle(contentContainer, "AutoHatch", 60)
-            createToggle(contentContainer, "AutoEquip", 110)
-            createToggle(contentContainer, "Treadmill", 160)
-            createToggle(contentContainer, "WaitSecret", 210)
+            createToggle(content, "AutoPlace", function(val) end)
+            createToggle(content, "AutoHatch", function(val) end)
+            createToggle(content, "AutoEquip", function(val) end)
+            createToggle(content, "Treadmill", function(val) end)
+            createToggle(content, "WaitSecret", function(val) end)
+
         elseif tabName == "SETTINGS" then
             local colorLabel = Instance.new("TextLabel")
-            colorLabel.Size = UDim2.new(0.9, 0, 0, 30)
-            colorLabel.Position = UDim2.new(0.05, 0, 0, 10)
+            colorLabel.Size = UDim2.new(1, 0, 0, 24)
             colorLabel.BackgroundTransparency = 1
             colorLabel.Text = "Цвет меню:"
-            colorLabel.TextColor3 = Color3.fromRGB(200, 200, 210)
-            colorLabel.TextSize = 14
+            colorLabel.TextColor3 = Color3.fromRGB(210, 210, 220)
+            colorLabel.TextSize = 13
             colorLabel.Font = Enum.Font.Gotham
             colorLabel.TextXAlignment = Enum.TextXAlignment.Left
-            colorLabel.Parent = contentContainer
+            colorLabel.Parent = content
 
             local colors = {
-                {name = "Тёмный", color = Color3.fromRGB(10, 10, 15)},
-                {name = "Синий", color = Color3.fromRGB(10, 20, 60)},
-                {name = "Красный", color = Color3.fromRGB(60, 10, 10)},
-                {name = "Зелёный", color = Color3.fromRGB(10, 50, 20)},
-                {name = "Фиолетовый", color = Color3.fromRGB(40, 10, 60)},
-                {name = "Серый", color = Color3.fromRGB(30, 30, 30)}
+                {name = "Тёмный", color = Color3.fromRGB(24, 24, 32)},
+                {name = "Синий", color = Color3.fromRGB(15, 25, 60)},
+                {name = "Красный", color = Color3.fromRGB(60, 15, 15)},
+                {name = "Зелёный", color = Color3.fromRGB(15, 50, 25)},
+                {name = "Фиолетовый", color = Color3.fromRGB(40, 15, 60)},
+                {name = "Серый", color = Color3.fromRGB(35, 35, 35)}
             }
 
-            for i, c in pairs(colors) do
+            local colorGrid = Instance.new("Frame")
+            colorGrid.Size = UDim2.new(1, 0, 0, 100)
+            colorGrid.BackgroundTransparency = 1
+            colorGrid.Parent = content
+
+            local gridLayout = Instance.new("UIGridLayout")
+            gridLayout.CellSize = UDim2.new(0.3, 0, 0, 30)
+            gridLayout.CellPadding = UDim2.new(0.02, 0, 0.05, 0)
+            gridLayout.Parent = colorGrid
+
+            for _, c in pairs(colors) do
                 local cBtn = Instance.new("TextButton")
-                cBtn.Size = UDim2.new(0.4, 0, 0, 30)
-                cBtn.Position = UDim2.new(0.05 + ((i-1) % 2) * 0.45, 0, 0, 50 + math.floor((i-1) / 2) * 40)
                 cBtn.BackgroundColor3 = c.color
                 cBtn.Text = c.name
                 cBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-                cBtn.TextSize = 12
+                cBtn.TextSize = 11
                 cBtn.Font = Enum.Font.Gotham
                 cBtn.Active = true
                 cBtn.Selectable = true
-                cBtn.Parent = contentContainer
+                cBtn.Parent = colorGrid
+                Instance.new("UICorner", cBtn).CornerRadius = UDim.new(0, 6)
 
-                local cCorner = Instance.new("UICorner")
-                cCorner.CornerRadius = UDim.new(0, 6)
-                cCorner.Parent = cBtn
-
-                cBtn.Activated:Connect(function()
-                    menuFrame.BackgroundColor3 = c.color
+                cBtn.MouseButton1Click:Connect(function()
+                    mainFrame.BackgroundColor3 = c.color
+                    miniFrame.BackgroundColor3 = c.color
                 end)
             end
         end
     end
 
-    for i, name in pairs(tabs) do
+    for _, name in ipairs(TABS) do
         local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(0, 95, 1, 0)
-        btn.Position = UDim2.new((i-1) * 0.24, 0, 0, 0)
-        btn.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
+        btn.Size = UDim2.new(0, 92, 1, 0)
+        btn.BackgroundColor3 = Color3.fromRGB(28, 28, 37)
         btn.Text = name
-        btn.TextColor3 = Color3.fromRGB(150, 150, 170)
-        btn.TextSize = 12
+        btn.TextColor3 = Color3.fromRGB(160, 160, 175)
+        btn.TextSize = 13
         btn.Font = Enum.Font.GothamBold
         btn.Active = true
         btn.Selectable = true
-        btn.Parent = tabContainer
+        btn.Parent = tabBar
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+
         tabButtons[name] = btn
 
-        btn.Activated:Connect(function()
-            for _, child in pairs(contentContainer:GetChildren()) do
-                child:Destroy()
-            end
+        btn.MouseButton1Click:Connect(function()
             for _, b in pairs(tabButtons) do
-                b.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
-                b.TextColor3 = Color3.fromRGB(150, 150, 170)
+                b.BackgroundColor3 = Color3.fromRGB(28, 28, 37)
+                b.TextColor3 = Color3.fromRGB(160, 160, 175)
             end
-            btn.BackgroundColor3 = Color3.fromRGB(25, 35, 60)
+            btn.BackgroundColor3 = Color3.fromRGB(50, 70, 130)
             btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-            loadTabContent(name)
+            loadTab(name)
         end)
     end
 
-    local firstBtn = tabButtons["MAIN"]
-    if firstBtn then
-        firstBtn.BackgroundColor3 = Color3.fromRGB(25, 35, 60)
-        firstBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        loadTabContent("MAIN")
-    end
+    local firstBtn = tabButtons[TABS[1]]
+    firstBtn.BackgroundColor3 = Color3.fromRGB(50, 70, 130)
+    firstBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    loadTab(TABS[1])
 
-    print("QWERTYsteel v8 загружен!")
+    print("QWERTYsteel v12 загружен!")
 end
 
 -- ============================================================
--- 3. КНОПКА ПОДТВЕРЖДЕНИЯ КЛЮЧА
+-- 4. КНОПКА ПОДТВЕРЖДЕНИЯ КЛЮЧА
 -- ============================================================
-submitBtn.Activated:Connect(function()
+submitBtn.MouseButton1Click:Connect(function()
     if keyInput.Text == SECRET_KEY then
         errorLabel.Text = ""
         startMain()
