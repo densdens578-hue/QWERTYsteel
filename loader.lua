@@ -1,4 +1,4 @@
--- QWERTYsteel v1.0
+-- QWERTYsteel v2.0
 -- Автор: ROCKET для Миши
 -- Игра: Steal an Egg
 -- Экзекьютор: Delta
@@ -77,9 +77,9 @@ errorLabel.Font = Enum.Font.Gotham
 errorLabel.Parent = keyFrame
 
 -- ============================================
--- ФУНКЦИЯ ЗАПУСКА МЕНЮ (ПОСЛЕ ВВОДА КЛЮЧА)
+-- ГЛАВНЫЙ GUI (КНОПКА + МЕНЮ)
 -- ============================================
-local function startMenu()
+local function startMain()
     keyGui:Destroy()
 
     local gui = Instance.new("ScreenGui")
@@ -90,29 +90,79 @@ local function startMenu()
     local oldGui = player.PlayerGui:FindFirstChild("QWERTYsteel")
     if oldGui and oldGui ~= gui then oldGui:Destroy() end
 
-    -- ГЛАВНОЕ ОКНО
+    -- ============================================
+    -- КРУГЛАЯ КНОПКА "Q"
+    -- ============================================
+    local iconBtn = Instance.new("TextButton")
+    iconBtn.Name = "IconBtn"
+    iconBtn.Size = UDim2.new(0, 50, 0, 50)
+    iconBtn.Position = UDim2.new(0.05, 0, 0.3, 0)
+    iconBtn.BackgroundColor3 = Color3.fromRGB(25, 35, 60)
+    iconBtn.Text = "Q"
+    iconBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    iconBtn.TextSize = 24
+    iconBtn.Font = Enum.Font.GothamBold
+    iconBtn.BorderSizePixel = 0
+    iconBtn.Parent = gui
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(1, 0)
+    corner.Parent = iconBtn
+
+    -- Перетаскивание кнопки
+    local dragging = false
+    local dragStart, startPos
+
+    iconBtn.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = iconBtn.Position
+        end
+    end)
+
+    iconBtn.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
+
+    game:GetService("UserInputService").InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dragStart
+            iconBtn.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+
+    -- ============================================
+    -- МЕНЮ (СКРЫТО ПО УМОЛЧАНИЮ)
+    -- ============================================
     local mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 480, 0, 560)
-    mainFrame.Position = UDim2.new(0.5, -240, 0.5, -280)
+    mainFrame.Name = "MainFrame"
+    mainFrame.Size = UDim2.new(0, 420, 0, 500)
+    mainFrame.Position = UDim2.new(0.5, -210, 0.5, -250)
     mainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
     mainFrame.BackgroundTransparency = 0.05
     mainFrame.BorderSizePixel = 1
     mainFrame.BorderColor3 = Color3.fromRGB(40, 50, 80)
     mainFrame.Active = true
     mainFrame.Draggable = true
+    mainFrame.Visible = false
     mainFrame.Parent = gui
 
+    -- Заголовок
     local title = Instance.new("TextLabel")
     title.Size = UDim2.new(1, 0, 0, 40)
     title.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
     title.Text = "QWERTYsteel"
     title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    title.TextSize = 22
+    title.TextSize = 20
     title.Font = Enum.Font.GothamBold
     title.TextXAlignment = Enum.TextXAlignment.Left
     title.PaddingLeft = 15
     title.Parent = mainFrame
 
+    -- Кнопка закрытия
     local closeBtn = Instance.new("TextButton")
     closeBtn.Size = UDim2.new(0, 40, 0, 40)
     closeBtn.Position = UDim2.new(1, -45, 0, 0)
@@ -123,10 +173,19 @@ local function startMenu()
     closeBtn.Font = Enum.Font.GothamBold
     closeBtn.Parent = mainFrame
     closeBtn.MouseButton1Click:Connect(function()
-        gui:Destroy()
+        mainFrame.Visible = false
+        iconBtn.Visible = true
     end)
 
+    -- Открытие меню по кнопке
+    iconBtn.MouseButton1Click:Connect(function()
+        mainFrame.Visible = true
+        iconBtn.Visible = false
+    end)
+
+    -- ============================================
     -- ВКЛАДКИ
+    -- ============================================
     local tabContainer = Instance.new("Frame")
     tabContainer.Size = UDim2.new(1, 0, 0, 40)
     tabContainer.Position = UDim2.new(0, 0, 0, 40)
@@ -134,7 +193,7 @@ local function startMenu()
     tabContainer.BackgroundTransparency = 0.3
     tabContainer.Parent = mainFrame
 
-    local tabs = {"MAIN", "VISUAL", "STYLE"}
+    local tabs = {"MAIN", "VISUAL", "STYLE", "SETTINGS"}
     local tabButtons = {}
 
     local contentContainer = Instance.new("Frame")
@@ -149,7 +208,8 @@ local function startMenu()
         SpeedHack = false, AntiTP = false, AntiKill = false,
         ESPEggs = false, ESPPlayers = false, Fly = false,
         AutoPlace = false, AutoHatch = false, AutoEquip = false,
-        Treadmill = false, WaitSecret = false, SpeedValue = 400
+        Treadmill = false, WaitSecret = false, SpeedValue = 400,
+        MenuColor = Color3.fromRGB(10, 10, 15)
     }
 
     local function createToggle(parent, name, yPos)
@@ -261,9 +321,6 @@ local function startMenu()
                 local value = math.floor(min + (max - min) * percent)
                 label.Text = name .. ": " .. value
                 state[name] = value
-                if state[name] == "SpeedValue" and player.Character and player.Character:FindFirstChild("Humanoid") then
-                    player.Character.Humanoid.WalkSpeed = value
-                end
             end
         end)
     end
@@ -288,17 +345,50 @@ local function startMenu()
             createToggle(contentContainer, "AutoEquip", 110)
             createToggle(contentContainer, "Treadmill", 160)
             createToggle(contentContainer, "WaitSecret", 210)
+        elseif tabName == "SETTINGS" then
+            local colorLabel = Instance.new("TextLabel")
+            colorLabel.Size = UDim2.new(0.9, 0, 0, 30)
+            colorLabel.Position = UDim2.new(0.05, 0, 0, 10)
+            colorLabel.BackgroundTransparency = 1
+            colorLabel.Text = "Цвет меню:"
+            colorLabel.TextColor3 = Color3.fromRGB(200, 200, 210)
+            colorLabel.TextSize = 14
+            colorLabel.Font = Enum.Font.Gotham
+            colorLabel.TextXAlignment = Enum.TextXAlignment.Left
+            colorLabel.Parent = contentContainer
+
+            local colors = {
+                {name = "Тёмный", color = Color3.fromRGB(10, 10, 15)},
+                {name = "Синий", color = Color3.fromRGB(10, 20, 60)},
+                {name = "Красный", color = Color3.fromRGB(60, 10, 10)},
+                {name = "Зелёный", color = Color3.fromRGB(10, 50, 20)}
+            }
+
+            for i, c in pairs(colors) do
+                local cBtn = Instance.new("TextButton")
+                cBtn.Size = UDim2.new(0.4, 0, 0, 30)
+                cBtn.Position = UDim2.new(0.05 + ((i-1) % 2) * 0.45, 0, 0, 50 + math.floor((i-1) / 2) * 40)
+                cBtn.BackgroundColor3 = c.color
+                cBtn.Text = c.name
+                cBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+                cBtn.TextSize = 12
+                cBtn.Font = Enum.Font.Gotham
+                cBtn.Parent = contentContainer
+                cBtn.MouseButton1Click:Connect(function()
+                    mainFrame.BackgroundColor3 = c.color
+                end)
+            end
         end
     end
 
     for i, name in pairs(tabs) do
         local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(0, 120, 1, 0)
-        btn.Position = UDim2.new((i-1) * 0.25, 0, 0, 0)
+        btn.Size = UDim2.new(0, 95, 1, 0)
+        btn.Position = UDim2.new((i-1) * 0.24, 0, 0, 0)
         btn.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
         btn.Text = name
         btn.TextColor3 = Color3.fromRGB(150, 150, 170)
-        btn.TextSize = 14
+        btn.TextSize = 12
         btn.Font = Enum.Font.GothamBold
         btn.Parent = tabContainer
         tabButtons[name] = btn
@@ -324,16 +414,16 @@ local function startMenu()
         loadTabContent("MAIN")
     end
 
-    print("QWERTYsteel загружен! Интерфейс готов.")
+    print("QWERTYsteel загружен! Меню готово.")
 end
 
 -- ============================================
--- ОБРАБОТКА КНОПКИ ПОДТВЕРЖДЕНИЯ
+-- ОБРАБОТКА КНОПКИ ПОДТВЕРЖДЕНИЯ КЛЮЧА
 -- ============================================
 submitBtn.MouseButton1Click:Connect(function()
     if keyInput.Text == SECRET_KEY then
         errorLabel.Text = ""
-        startMenu()
+        startMain()
     else
         errorLabel.Text = "Неверный ключ! Попробуй снова."
     end
