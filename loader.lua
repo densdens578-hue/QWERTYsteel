@@ -1,5 +1,5 @@
 -- ============================================================
--- QWERTYsteel v7.0
+-- QWERTYsteel v8.0
 -- Автор: ROCKET для Миши
 -- Игра: Steal an Egg
 -- Экзекьютор: Delta
@@ -14,7 +14,6 @@ local UIS = game:GetService("UserInputService")
 -- ============================================================
 local SECRET_KEY = "CELEBRATE6667"
 
--- Удаляем старый ключевой GUI, если есть
 local oldKeyGui = player.PlayerGui:FindFirstChild("QWERTYsteelKey")
 if oldKeyGui then oldKeyGui:Destroy() end
 
@@ -92,12 +91,11 @@ errorLabel.Font = Enum.Font.Gotham
 errorLabel.Parent = keyFrame
 
 -- ============================================================
--- 2. ГЛАВНЫЙ GUI
+-- 2. ГЛАВНЫЙ GUI (СРАЗУ ОТКРЫТ, БЕЗ ИКОНКИ)
 -- ============================================================
 local function startMain()
     keyGui:Destroy()
 
-    -- Удаляем старый главный GUI, если есть
     local oldGui = player.PlayerGui:FindFirstChild("QWERTYsteel")
     if oldGui then oldGui:Destroy() end
 
@@ -109,34 +107,10 @@ local function startMain()
     gui.DisplayOrder = 999
 
     -- ============================================================
-    -- 2.1 КРУГЛАЯ КНОПКА "Q" (ФИКСИРОВАННАЯ)
-    -- ============================================================
-    local iconBtn = Instance.new("TextButton")
-    iconBtn.Size = UDim2.new(0, 55, 0, 55)
-    iconBtn.Position = UDim2.new(0.05, 0, 0.12, 0)
-    iconBtn.BackgroundColor3 = Color3.fromRGB(25, 35, 60)
-    iconBtn.Text = "Q"
-    iconBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    iconBtn.TextSize = 26
-    iconBtn.Font = Enum.Font.GothamBold
-    iconBtn.BorderSizePixel = 0
-    iconBtn.Active = true
-    iconBtn.Selectable = true
-    iconBtn.Parent = gui
-
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(1, 0)
-    corner.Parent = iconBtn
-
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(80, 120, 255)
-    stroke.Thickness = 2
-    stroke.Parent = iconBtn
-
-    -- ============================================================
-    -- 2.2 МЕНЮ
+    -- 2.1 ГЛАВНОЕ ОКНО (СРАЗУ ВИДИМОЕ)
     -- ============================================================
     local menuFrame = Instance.new("Frame")
+    menuFrame.Name = "MenuFrame"
     menuFrame.Size = UDim2.new(0, 440, 0, 520)
     menuFrame.Position = UDim2.new(0.5, -220, 0.5, -260)
     menuFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
@@ -144,7 +118,7 @@ local function startMain()
     menuFrame.BorderColor3 = Color3.fromRGB(40, 50, 80)
     menuFrame.Active = true
     menuFrame.Draggable = true
-    menuFrame.Visible = false
+    menuFrame.Visible = true -- СРАЗУ ОТКРЫТО
     menuFrame.Parent = gui
 
     local menuCorner = Instance.new("UICorner")
@@ -154,7 +128,7 @@ local function startMain()
     local menuTitle = Instance.new("TextLabel")
     menuTitle.Size = UDim2.new(1, 0, 0, 40)
     menuTitle.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
-    menuTitle.Text = "QWERTYsteel v7"
+    menuTitle.Text = "QWERTYsteel v8"
     menuTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
     menuTitle.TextSize = 20
     menuTitle.Font = Enum.Font.GothamBold
@@ -162,29 +136,53 @@ local function startMain()
     menuTitle.PaddingLeft = 15
     menuTitle.Parent = menuFrame
 
-    local closeBtn = Instance.new("TextButton")
-    closeBtn.Size = UDim2.new(0, 40, 0, 40)
-    closeBtn.Position = UDim2.new(1, -45, 0, 0)
-    closeBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
-    closeBtn.Text = "✕"
-    closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    closeBtn.TextSize = 20
-    closeBtn.Font = Enum.Font.GothamBold
-    closeBtn.Active = true
-    closeBtn.Selectable = true
-    closeBtn.Parent = menuFrame
+    -- Кнопка СВЁРТЫВАНИЯ (вместо закрытия)
+    local minimizeBtn = Instance.new("TextButton")
+    minimizeBtn.Size = UDim2.new(0, 40, 0, 40)
+    minimizeBtn.Position = UDim2.new(1, -45, 0, 0)
+    minimizeBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
+    minimizeBtn.Text = "—"
+    minimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    minimizeBtn.TextSize = 24
+    minimizeBtn.Font = Enum.Font.GothamBold
+    minimizeBtn.Active = true
+    minimizeBtn.Selectable = true
+    minimizeBtn.Parent = menuFrame
 
-    -- ============================================================
-    -- ОТКРЫТИЕ / ЗАКРЫТИЕ (ЧЕРЕЗ ACTIVATED)
-    -- ============================================================
-    iconBtn.Activated:Connect(function()
-        menuFrame.Visible = true
-        iconBtn.Visible = false
+    -- Кнопка РАЗВЁРТЫВАНИЯ (появляется, когда меню свёрнуто)
+    local restoreBtn = Instance.new("TextButton")
+    restoreBtn.Size = UDim2.new(0, 60, 0, 60)
+    restoreBtn.Position = UDim2.new(0.05, 0, 0.12, 0)
+    restoreBtn.BackgroundColor3 = Color3.fromRGB(25, 35, 60)
+    restoreBtn.Text = "Q"
+    restoreBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    restoreBtn.TextSize = 26
+    restoreBtn.Font = Enum.Font.GothamBold
+    restoreBtn.BorderSizePixel = 0
+    restoreBtn.Active = true
+    restoreBtn.Selectable = true
+    restoreBtn.Visible = false -- СКРЫТА ПОКА МЕНЮ ОТКРЫТО
+    restoreBtn.Parent = gui
+
+    local restoreCorner = Instance.new("UICorner")
+    restoreCorner.CornerRadius = UDim.new(1, 0)
+    restoreCorner.Parent = restoreBtn
+
+    local restoreStroke = Instance.new("UIStroke")
+    restoreStroke.Color = Color3.fromRGB(80, 120, 255)
+    restoreStroke.Thickness = 2
+    restoreStroke.Parent = restoreBtn
+
+    -- СВЁРТЫВАНИЕ
+    minimizeBtn.Activated:Connect(function()
+        menuFrame.Visible = false
+        restoreBtn.Visible = true
     end)
 
-    closeBtn.Activated:Connect(function()
-        menuFrame.Visible = false
-        iconBtn.Visible = true
+    -- РАЗВЁРТЫВАНИЕ
+    restoreBtn.Activated:Connect(function()
+        menuFrame.Visible = true
+        restoreBtn.Visible = false
     end)
 
     -- ============================================================
@@ -456,11 +454,11 @@ local function startMain()
         loadTabContent("MAIN")
     end
 
-    print("QWERTYsteel v7 загружен!")
+    print("QWERTYsteel v8 загружен!")
 end
 
 -- ============================================================
--- 3. КНОПКА ПОДТВЕРЖДЕНИЯ КЛЮЧА (ACTIVATED)
+-- 3. КНОПКА ПОДТВЕРЖДЕНИЯ КЛЮЧА
 -- ============================================================
 submitBtn.Activated:Connect(function()
     if keyInput.Text == SECRET_KEY then
