@@ -1,5 +1,5 @@
 -- ============================================================
--- QWERTYsteel v4.1
+-- QWERTYsteel v6.0
 -- Автор: ROCKET для Миши
 -- Игра: Steal an Egg
 -- Экзекьютор: Delta
@@ -8,6 +8,8 @@
 
 local player = game.Players.LocalPlayer
 local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 
 -- ============================================================
 -- 1. ПРОВЕРКА КЛЮЧА
@@ -19,6 +21,7 @@ keyGui.Name = "QWERTYsteelKey"
 keyGui.Parent = player.PlayerGui
 keyGui.ResetOnSpawn = false
 keyGui.IgnoreGuiInset = true
+keyGui.DisplayOrder = 999
 
 local keyFrame = Instance.new("Frame")
 keyFrame.Size = UDim2.new(0, 320, 0, 230)
@@ -95,16 +98,17 @@ local function startMain()
     gui.Parent = player.PlayerGui
     gui.ResetOnSpawn = false
     gui.IgnoreGuiInset = true
+    gui.DisplayOrder = 999
 
     local oldGui = player.PlayerGui:FindFirstChild("QWERTYsteel")
     if oldGui and oldGui ~= gui then oldGui:Destroy() end
 
     -- ============================================================
-    -- 2.1 КРУГЛАЯ КНОПКА "Q"
+    -- 2.1 КРУГЛАЯ КНОПКА "Q" (ФИКСИРОВАННАЯ)
     -- ============================================================
     local iconBtn = Instance.new("TextButton")
     iconBtn.Size = UDim2.new(0, 55, 0, 55)
-    iconBtn.Position = UDim2.new(0.02, 0, 0.3, 0)
+    iconBtn.Position = UDim2.new(0.05, 0, 0.12, 0)
     iconBtn.BackgroundColor3 = Color3.fromRGB(25, 35, 60)
     iconBtn.Text = "Q"
     iconBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -122,35 +126,8 @@ local function startMain()
     stroke.Thickness = 2
     stroke.Parent = iconBtn
 
-    -- Перетаскивание кнопки (только слева)
-    local dragging = false
-    local dragStart, startPos
-
-    iconBtn.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = input.Position
-            startPos = iconBtn.AbsolutePosition
-        end
-    end)
-
-    iconBtn.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = false
-        end
-    end)
-
-    UIS.InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            local delta = input.Position - dragStart
-            local newX = math.clamp(startPos.X + delta.X, 0, gui.AbsoluteSize.X * 0.45)
-            local newY = math.clamp(startPos.Y + delta.Y, 0, gui.AbsoluteSize.Y * 0.85)
-            iconBtn.Position = UDim2.new(0, newX, 0, newY)
-        end
-    end)
-
     -- ============================================================
-    -- 2.2 МЕНЮ
+    -- 2.2 МЕНЮ (СКРЫТО ПО УМОЛЧАНИЮ)
     -- ============================================================
     local menuFrame = Instance.new("Frame")
     menuFrame.Size = UDim2.new(0, 440, 0, 520)
@@ -170,7 +147,7 @@ local function startMain()
     local menuTitle = Instance.new("TextLabel")
     menuTitle.Size = UDim2.new(1, 0, 0, 40)
     menuTitle.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
-    menuTitle.Text = "QWERTYsteel v4.1"
+    menuTitle.Text = "QWERTYsteel v6"
     menuTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
     menuTitle.TextSize = 20
     menuTitle.Font = Enum.Font.GothamBold
@@ -187,19 +164,26 @@ local function startMain()
     closeBtn.TextSize = 20
     closeBtn.Font = Enum.Font.GothamBold
     closeBtn.Parent = menuFrame
-    closeBtn.MouseButton1Click:Connect(function()
-        menuFrame.Visible = false
-        iconBtn.Visible = true
-    end)
 
-    -- Открытие меню (двойная защита: MouseButton1Click + Touch)
     local function openMenu()
         menuFrame.Visible = true
         iconBtn.Visible = false
     end
 
-    iconBtn.MouseButton1Click:Connect(openMenu)
-    iconBtn.TouchTap:Connect(openMenu)
+    local function closeMenu()
+        menuFrame.Visible = false
+        iconBtn.Visible = true
+    end
+
+    closeBtn.TouchTap:Connect(function()
+        task.wait(0.1)
+        closeMenu()
+    end)
+
+    iconBtn.TouchTap:Connect(function()
+        task.wait(0.1)
+        openMenu()
+    end)
 
     -- ============================================================
     -- 2.3 ВКЛАДКИ
@@ -262,12 +246,6 @@ local function startMain()
         local bCorner = Instance.new("UICorner")
         bCorner.CornerRadius = UDim.new(0, 6)
         bCorner.Parent = btn
-
-        btn.MouseButton1Click:Connect(function()
-            state[name] = not state[name]
-            btn.Text = state[name] and "ON" or "OFF"
-            btn.BackgroundColor3 = state[name] and Color3.fromRGB(0, 150, 80) or Color3.fromRGB(40, 40, 55)
-        end)
 
         btn.TouchTap:Connect(function()
             state[name] = not state[name]
@@ -428,10 +406,6 @@ local function startMain()
                 cCorner.CornerRadius = UDim.new(0, 6)
                 cCorner.Parent = cBtn
 
-                cBtn.MouseButton1Click:Connect(function()
-                    menuFrame.BackgroundColor3 = c.color
-                end)
-
                 cBtn.TouchTap:Connect(function()
                     menuFrame.BackgroundColor3 = c.color
                 end)
@@ -451,7 +425,7 @@ local function startMain()
         btn.Parent = tabContainer
         tabButtons[name] = btn
 
-        local function switchTab()
+        btn.TouchTap:Connect(function()
             for _, child in pairs(contentContainer:GetChildren()) do
                 child:Destroy()
             end
@@ -462,10 +436,7 @@ local function startMain()
             btn.BackgroundColor3 = Color3.fromRGB(25, 35, 60)
             btn.TextColor3 = Color3.fromRGB(255, 255, 255)
             loadTabContent(name)
-        end
-
-        btn.MouseButton1Click:Connect(switchTab)
-        btn.TouchTap:Connect(switchTab)
+        end)
     end
 
     local firstBtn = tabButtons["MAIN"]
@@ -475,21 +446,12 @@ local function startMain()
         loadTabContent("MAIN")
     end
 
-    print("QWERTYsteel v4.1 загружен!")
+    print("QWERTYsteel v6 загружен!")
 end
 
 -- ============================================================
 -- 3. КНОПКА ПОДТВЕРЖДЕНИЯ КЛЮЧА
 -- ============================================================
-submitBtn.MouseButton1Click:Connect(function()
-    if keyInput.Text == SECRET_KEY then
-        errorLabel.Text = ""
-        startMain()
-    else
-        errorLabel.Text = "Неверный ключ!"
-    end
-end)
-
 submitBtn.TouchTap:Connect(function()
     if keyInput.Text == SECRET_KEY then
         errorLabel.Text = ""
